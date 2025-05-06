@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { MantineProvider, Container, Title, Table, Badge, Button, Group, Text, Paper, ActionIcon, Switch, Loader } from '@mantine/core'
+import { MantineProvider, Container, Title, Table, Badge, Button, Group, Text, Paper, ActionIcon, Switch, Loader, Notification } from '@mantine/core'
 import { IconSun, IconMoonStars, IconRefresh } from '@tabler/icons-react'
 import axios from 'axios'
 import { format } from 'date-fns'
@@ -8,21 +8,51 @@ import './App.css'
 function App() {
   const [logs, setLogs] = useState([])
   const [colorScheme, setColorScheme] = useState('light')
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)  // Changed initial state to false
+  const [error, setError] = useState(null)
+  const [isBackendAvailable, setIsBackendAvailable] = useState(false)
 
+  // Check if backend is available
   useEffect(() => {
-    fetchLogs()
-    const interval = setInterval(fetchLogs, 30000) // Refresh every 30 seconds
-    return () => clearInterval(interval)
+    const checkBackend = async () => {
+      try {
+        await axios.get('http://localhost:8000')
+        setIsBackendAvailable(true)
+      } catch (error) {
+        setError('Cannot connect to backend server. Please make sure it is running on port 8000.')
+        console.error('Backend connection error:', error)
+      }
+    }
+    checkBackend()
   }, [])
+
+  // Only fetch logs if backend is available
+  useEffect(() => {
+    if (isBackendAvailable) {
+      fetchLogs()
+      const interval = setInterval(fetchLogs, 30000)
+      return () => clearInterval(interval)
+    }
+  }, [isBackendAvailable])
 
   const fetchLogs = async () => {
     try {
+      if (!isBackendAvailable) return
+
       setIsLoading(true)
       const response = await axios.get('http://localhost:8000/logs')
-      setLogs(response.data)
+      
+      if (response.data === null || response.data === undefined) {
+        setError('Invalid response from server')
+        setLogs([])
+        return
+      }
+
+      setLogs(Array.isArray(response.data) ? response.data : [])
+      setError(null)
     } catch (error) {
-      console.error('Error fetching logs:', error)
+      setError(error.message)
+      setLogs([])
     } finally {
       setIsLoading(false)
     }
@@ -69,6 +99,12 @@ function App() {
       }}
     >
       <Container size="xl" py="xl">
+        {error && (
+          <Notification color="red" mb="md" onClose={() => setError(null)}>
+            Error: {error}
+          </Notification>
+        )}
+        
         <Paper shadow="sm" p="md" mb="xl" radius="md">
           <Group position="apart" mb="xl">
             <Group>
@@ -105,9 +141,9 @@ function App() {
           >
             {isLoading ? (
               <div style={{ display: 'flex', justifyContent: 'center', padding: '2rem' }}>
-                <Loader />
+                <Loader size="lg" />
               </div>
-            ) : (
+            ) : logs && logs.length > 0 ? (
               <Table striped highlightOnHover>
                 <thead>
                   <tr>
@@ -158,9 +194,23 @@ function App() {
                   )}
                 </tbody>
               </Table>
+            ) : (
+              <Text align="center" color="dimmed" py="xl">
+                No messages found. Make sure your backend server is running at http://localhost:8000
+              </Text>
             )}
           </Paper>
         </Paper>
+
+        {/* Debug information */}
+        {process.env.NODE_ENV === 'development' && (
+          <Paper p="xs" mt="xl">
+            <Text size="sm" color="dimmed">Debug Info:</Text>
+            <pre style={{ fontSize: '12px' }}>
+              {JSON.stringify({ isLoading, logsCount: logs?.length, error }, null, 2)}
+            </pre>
+          </Paper>
+        )}
       </Container>
     </MantineProvider>
   )
