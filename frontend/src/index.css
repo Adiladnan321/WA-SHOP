@@ -1,3 +1,5 @@
+@import "tailwindcss";
+
 :root {
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
@@ -11,6 +13,12 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
+  --whatsapp-green: #25D366;
+  --whatsapp-blue: #34B7F1;
+  --whatsapp-teal: #128C7E;
+  --whatsapp-light-bg: #ECE5DD;
+  --whatsapp-dark-bg: #0D1418;
 }
 
 a {
@@ -28,6 +36,11 @@ body {
   place-items: center;
   min-width: 320px;
   min-height: 100vh;
+  background-color: #F0F2F5;
+}
+
+[data-mantine-color-scheme="dark"] body {
+  background-color: var(--whatsapp-dark-bg);
 }
 
 h1 {
@@ -52,6 +65,41 @@ button:hover {
 button:focus,
 button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
+}
+
+/* Chat styles */
+.message-bubble {
+  max-width: 70%;
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: 1rem;
+  position: relative;
+  border-radius: 7.5px;
+  box-shadow: 0 1px 0.5px rgba(0,0,0,0.13);
+}
+
+.message-sent {
+  margin-left: auto;
+  background-color: #0084ff;
+  color: white;
+  background-color: var(--whatsapp-green);
+}
+
+[data-mantine-color-scheme="dark"] .message-sent {
+  background-color: var(--whatsapp-teal);
+}
+
+.message-received {
+  margin-right: auto;
+  background-color: #f0f0f0;
+}
+
+/* Responsive grid */
+@media (min-width: 1024px) {
+  .chat-container {
+    position: sticky;
+    top: 1rem;
+  }
 }
 
 @media (prefers-color-scheme: light) {

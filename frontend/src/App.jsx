@@ -1,18 +1,18 @@
 import { useState, useEffect } from 'react'
-import { MantineProvider, Container, Title, Table, Badge, Button, Group, Text, Paper, ActionIcon, Switch, Loader, Notification } from '@mantine/core'
-import { IconSun, IconMoonStars, IconRefresh } from '@tabler/icons-react'
+import { Text, Paper, Notification } from '@mantine/core'
 import axios from 'axios'
-import { format } from 'date-fns'
-import './App.css'
+import { AppShell } from './components/layout/AppShell'
+import { Dashboard } from './components/dashboard/Dashboard'
+import { Chat } from './components/chat/Chat'
 
 function App() {
   const [logs, setLogs] = useState([])
   const [colorScheme, setColorScheme] = useState('light')
-  const [isLoading, setIsLoading] = useState(false)  // Changed initial state to false
+  const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState(null)
   const [isBackendAvailable, setIsBackendAvailable] = useState(false)
+  const [selectedLog, setSelectedLog] = useState(null);
 
-  // Check if backend is available
   useEffect(() => {
     const checkBackend = async () => {
       try {
@@ -26,7 +26,6 @@ function App() {
     checkBackend()
   }, [])
 
-  // Only fetch logs if backend is available
   useEffect(() => {
     if (isBackendAvailable) {
       fetchLogs()
@@ -72,147 +71,41 @@ function App() {
   }
 
   return (
-    <MantineProvider 
-      withGlobalStyles 
-      withNormalizeCSS
-      theme={{
-        colorScheme,
-        primaryColor: 'blue',
-        fontFamily: 'Inter, sans-serif',
-        components: {
-          Table: {
-            styles: (theme) => ({
-              root: {
-                '& thead tr th': {
-                  backgroundColor: theme.colorScheme === 'dark' ? theme.colors.dark[7] : theme.colors.gray[0],
-                  padding: '16px',
-                  fontWeight: 600,
-                },
-                '& tbody tr td': {
-                  padding: '16px',
-                  borderBottom: `1px solid ${theme.colorScheme === 'dark' ? theme.colors.dark[4] : theme.colors.gray[3]}`,
-                }
-              }
-            })
-          }
-        }
-      }}
-    >
-      <Container size="xl" py="xl">
-        {error && (
-          <Notification color="red" mb="md" onClose={() => setError(null)}>
-            Error: {error}
-          </Notification>
-        )}
-        
-        <Paper shadow="sm" p="md" mb="xl" radius="md">
-          <Group position="apart" mb="xl">
-            <Group>
-              <Title order={1} size="h2">WhatsApp Message Dashboard</Title>
-              <Badge size="lg" variant="filled" color="blue">
-                {logs.length} Messages
-              </Badge>
-            </Group>
-            <Group>
-              <ActionIcon 
-                variant="light"
-                color="blue"
-                onClick={fetchLogs}
-                loading={isLoading}
-                title="Refresh"
-              >
-                <IconRefresh size={18} />
-              </ActionIcon>
-              <Switch
-                size="md"
-                onLabel="🌙"
-                offLabel="☀️"
-                checked={colorScheme === 'dark'}
-                onChange={toggleColorScheme}
-              />
-            </Group>
-          </Group>
+    <AppShell colorScheme={colorScheme}>
+      {error && (
+        <Notification color="red" mb="md" onClose={() => setError(null)}>
+          Error: {error}
+        </Notification>
+      )}
+      
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Dashboard 
+          logs={logs}
+          isLoading={isLoading}
+          selectedLog={selectedLog}
+          onSelectLog={setSelectedLog}
+          onRetry={retryMessage}
+          onRefresh={fetchLogs}
+          colorScheme={colorScheme}
+          onToggleTheme={toggleColorScheme}
+        />
 
-          <Paper 
-            shadow="xs" 
-            radius="md" 
-            p="xs"
-            style={{ overflow: 'auto' }}
-          >
-            {isLoading ? (
-              <div style={{ display: 'flex', justifyContent: 'center', padding: '2rem' }}>
-                <Loader size="lg" />
-              </div>
-            ) : logs && logs.length > 0 ? (
-              <Table striped highlightOnHover>
-                <thead>
-                  <tr>
-                    <th>Time</th>
-                    <th>Phone</th>
-                    <th>Template</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {logs.map((log) => (
-                    <tr key={log.id}>
-                      <td style={{ whiteSpace: 'nowrap' }}>{format(new Date(log.timestamp), 'PPpp')}</td>
-                      <td>{log.phone}</td>
-                      <td>{log.template}</td>
-                      <td>
-                        <Badge 
-                          variant="filled"
-                          color={log.status === 'success' ? 'teal' : 'red'}
-                          radius="sm"
-                        >
-                          {log.status}
-                        </Badge>
-                      </td>
-                      <td>
-                        {log.status === 'failed' && (
-                          <Button 
-                            size="xs" 
-                            variant="light"
-                            color="blue" 
-                            onClick={() => retryMessage(log.id)}
-                          >
-                            Retry
-                          </Button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                  {logs.length === 0 && (
-                    <tr>
-                      <td colSpan={5}>
-                        <Text align="center" color="dimmed">
-                          No messages found
-                        </Text>
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </Table>
-            ) : (
-              <Text align="center" color="dimmed" py="xl">
-                No messages found. Make sure your backend server is running at http://localhost:8000
-              </Text>
-            )}
-          </Paper>
+        {selectedLog && (
+          <div className="lg:sticky lg:top-4">
+            <Chat log={selectedLog} />
+          </div>
+        )}
+      </div>
+
+      {process.env.NODE_ENV === 'development' && (
+        <Paper p="xs" mt="xl">
+          <Text size="sm" color="dimmed">Debug Info:</Text>
+          <pre style={{ fontSize: '12px' }}>
+            {JSON.stringify({ isLoading, logsCount: logs?.length, error }, null, 2)}
+          </pre>
         </Paper>
-
-        {/* Debug information */}
-        {process.env.NODE_ENV === 'development' && (
-          <Paper p="xs" mt="xl">
-            <Text size="sm" color="dimmed">Debug Info:</Text>
-            <pre style={{ fontSize: '12px' }}>
-              {JSON.stringify({ isLoading, logsCount: logs?.length, error }, null, 2)}
-            </pre>
-          </Paper>
-        )}
-      </Container>
-    </MantineProvider>
+      )}
+    </AppShell>
   )
 }
 
